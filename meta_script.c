@@ -3,22 +3,24 @@
 #include <string.h>
 
 
-get_string(char* orig, char* dest){
+int get_string(char* orig, char* dest){
 	int i=0;
 	int j=0;
+	int shift=0;
 	while(orig[i] != 34){
 		i++;
 	}
 	i++;
-	while(orig[i] != 34){
-		if(orig[i]==37){
+	while(orig[i] != '\"'){
+		/*if(orig[i]==37){
 			dest[j] = '%';
 			dest[j+1] = '%';
 			j++;
+			shift++;
 		}
-		else if(orig[i]==92 && orig[i+1]==34){
-            dest[j] = 92;
-            dest[j] = 34;
+		else*/ if(orig[i]=='\\' && orig[i+1]=='\"'){
+            dest[j] = '\\';
+            dest[j+1] = '\"';
             i++;
             j++;
 		}
@@ -28,6 +30,38 @@ get_string(char* orig, char* dest){
 		j++;
 	}
 	dest[j] = 0;
+	return shift;
+}
+
+
+void print_contitions(char *types, FILE* script){
+    int pos = 4;
+    char type[64];
+    int i=0;
+    if(types[4]=='+'){
+        fprintf(script, "		If RegExMatch(Item, (");
+    }
+    while(pos < strlen(types)){
+        while(pos+i+1 < strlen(types) && types[pos+i+1]!='+' && types[pos+i+1]!='-'){
+            type[i]=types[pos+i+1];
+            i++;
+        }
+        type[i]=0;
+        if(types[pos]=='-'){
+            fprintf(script, "		IfNotInString Item, %s\n", type);
+        }
+        else{
+            if(pos==4)
+                fprintf(script, "%s", type);
+            else
+                fprintf(script, "|%s", type);
+        }
+        pos += i+1;
+        i=0;
+    }
+    if(types[4]=='+'){
+        fprintf(script, "))\n");
+    }
 }
 
 
@@ -62,6 +96,32 @@ void to_regex(char *affix, char* regex){
 }
 
 
+int parse_conditions(char* orig, char* dest, FILE* script){
+    char affix[256];
+    char regex[256];
+    char types[256];
+    int shift=4;
+    if(strstr(orig, "[")){
+        shift -= get_string(orig, affix);
+        to_regex(affix, regex);
+        shift += strlen(affix);
+        shift -= get_string(orig+shift, types);
+        shift += strlen(types);
+        fprintf(script, "	If(RegExMatch(Item, \"%s\"))\n", regex);
+        print_contitions(types, script);
+        shift += 6;
+    }
+    else{
+        shift -= get_string(orig, affix);
+        shift += strlen(affix);
+        to_regex(affix, regex);
+        fprintf(script, "	If(RegExMatch(Item, \"%s\"))\n", regex);
+    }
+    return shift;
+}
+
+
+
 void link_affix_effect(FILE *datas, FILE *script){
 	char line[512];
 	char log[256];
@@ -69,32 +129,27 @@ void link_affix_effect(FILE *datas, FILE *script){
 	char affix[256];
 	char regex[256];
 	int stop = 0;
+	int shift;
 
 	while(!stop){
-		int pos=1;
+		int pos=2;
 		fgets(line, 512, datas);
-		if(strlen(line)<2){}
-		else if(line[2] == '/' && line[3] == '/'){
+		if(line[0] == ']')
+			stop = 1;
+		else if(strlen(line)<2){}
+		else if(line[2] == '\"'){
 			fprintf(script, "\n\n	;##### ");
-			fprintf(script, line+5);
+			fprintf(script, line+3);
 			fprintf(script, "\n");
 		}
-		else if(line[0] == ']' && line[1] == ';')
-			stop = 1;
 		else if(line[2] == '[' && line[3] == '"'){
-			get_string(line+pos, log);
-			pos += 4+strlen(log);
-			get_string(line+pos, effect);
-			pos += 4+strlen(effect);
+			shift = get_string(line+pos, log);
+			pos += 4+strlen(log)-shift;
+			shift = get_string(line+pos, effect);
+			pos += 4+strlen(effect)-shift;
 			while(strstr(line+pos, "\"")){
-				get_string(line+pos, affix);
-				to_regex(affix, regex);
-				fprintf(script, "	If(RegExMatch(Item, \"");
-				fprintf(script, regex);
-				fprintf(script, "\"))\n		Result := Result . \"`r");
-				fprintf(script, effect);
-				fprintf(script, "\"\n\n");
-				pos += 4+strlen(affix);
+				pos += parse_conditions(line+pos, affix, script);
+				fprintf(script, "		Result := Result . \"`r%s\"\n\n", effect);
 			}
 		}
 	}
@@ -111,9 +166,9 @@ void link_log_effect(FILE *datas, FILE *script){
 	while(!stop){
 		int pos=1;
 		fgets(line, 512, datas);
-		if(line[2] == '/' && line[3] == '/'){
+		if(line[2] == '\"'){
 			fprintf(script, "\n\n	;##### ");
-			fprintf(script, line+5);
+			fprintf(script, line+3);
 			fprintf(script, "\n");
 		}
 		else if(line[0] == ']' && line[1] == ';')
@@ -163,7 +218,7 @@ void link_all(FILE *datas, FILE *script){
 				fprintf(script, regex);
 				fprintf(script, "\"))\n		Result := Result . \"`r");
 				fprintf(script, log);
-				fprintf(script, "\`r    ");
+				fprintf(script, "`r    ");
 				fprintf(script, effect);
 				fprintf(script, "\"\n\n");
 				pos += 4+strlen(affix);
@@ -175,22 +230,22 @@ void link_all(FILE *datas, FILE *script){
 
 int main(){
 	FILE* datas = fopen("shrines.js", "r");
-	fscanf(datas, "var ShrineEffects = [");
+	fscanf(datas, "[");
 	FILE* script = fopen("darkshrines.ahk", "w+");
 
     fprintf(script, "GetClipboardContents(DropNewlines = False)\n{\n    Result =\n    If Not DropNewlines\n    {\n        Loop, Parse, Clipboard, `n, `r\n        {\n            Result := Result . A_LoopField . \"`r`n\"\n        }\n    }\n    Else\n    {   \n        Loop, Parse, Clipboard, `n, `r\n        {\n            Result := Result . A_LoopField\n        }\n    }\n    return Result\n}\n\n\n");
 
-	fprintf(script, "Parse_item(Item)\n{\n	Result_bis := Result");
+	fprintf(script, "Parse_item(Item)\n{\n	Result_bis := Result\n\n");
 	link_affix_effect(datas, script);
 	fprintf(script, "	IfInString Result_bis, %%Result%%\n\
 		Result := Result . \"`rUNKNOWN : \" . Item\n}\n\n");
 
-	datas = fopen("shrines.js", "a+");
-	fscanf(datas, "var ShrineEffects = [");
+	//datas = fopen("shrines.js", "a+");
+	//fscanf(datas, "[");
 
-	fprintf(script, "ParseAffix(Item)\n{\n");
-	link_all(datas, script);
-	fprintf(script, "}\n\n");
+	//fprintf(script, "ParseAffix(Item)\n{\n");
+	//link_all(datas, script);
+	//fprintf(script, "}\n\n");
 
 	fprintf(script, "GetStartingPos(Item)\n\
 {\n\
@@ -226,8 +281,8 @@ int main(){
 		StringLeft Line, Item, Pos\n\
         If n=1\n\
             Parse_item(Line)\n\
-        If n=2\n\
-            ParseAffix(Line)\n\
+        "/*If n=2\n\
+            ParseAffix(Line)\*/"\
 		StringTrimLeft Item, Item, Pos+2\n\
 		Split(Item, n)\n\
 	}\n\
@@ -247,7 +302,7 @@ Tooltip %%Result%%, X, Y\n\
 SetTimer, ToolTipTimer, 100\n\
 return\n\n");
 
-    fprintf(script, "^w::\n\
+    //fprintf(script, "^w::\n\
 MouseGetPos X, Y\n\
 Item := GetClipboardContents()\n\
 Global Result := ""\n\
