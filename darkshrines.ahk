@@ -63,6 +63,10 @@ Parse_item(Item)
 	If(RegExMatch(Item, "i)^Monsters have .*% increased Area of Effect$"))
 		Result := Result . "`rpermanent echoing shrine"
 
+	If(RegExMatch(Item, "i)^.*% increased Accuracy Rating$"))
+		If RegExMatch(Type, "i)(jewel)")
+		Result := Result . "`rpermanent shrouded shrine"
+
 	If(RegExMatch(Item, "i)^.*% increased Melee Damage$"))
 		Result := Result . "`rpermanent brutal shrine"
 
@@ -80,6 +84,9 @@ Parse_item(Item)
 		Result := Result . "`rlarge strongbox"
 
 	If(RegExMatch(Item, "i)^.*% increased Physical Damage$"))
+		Result := Result . "`rblacksmith's strongbox"
+
+	If(RegExMatch(Item, "i)^\+.* to Level of Socketed Bow Gems$"))
 		Result := Result . "`rblacksmith's strongbox"
 
 	If(RegExMatch(Item, "i)^.*% increased Stun Recovery$"))
@@ -184,23 +191,22 @@ Parse_item(Item)
 		Result := Result . "`rduplicates all rare monsters"
 
 	If(RegExMatch(Item, "i)^\+.* to Evasion Rating$"))
-		IfNotInString Item, ring
-		IfNotInString Item, amulet
+		If not RegExMatch(Type, "i)(ring|amulet)")
 		Result := Result . "`rspawns several groups of monsters"
 
 	If(RegExMatch(Item, "i)^.*% increased Evasion Rating$"))
-		IfNotInString Item, jewel
+		If not RegExMatch(Type, "i)(jewel)")
 		Result := Result . "`rspawns several groups of monsters"
 
 	If(RegExMatch(Item, "i)^.*% increased Armour and Evasion$"))
 		Result := Result . "`rspawns several groups of magic monsters"
 
 	If(RegExMatch(Item, "i)^\+.* to Evasion Rating$"))
-		If RegExMatch(Item, (ring|amulet))
+		If RegExMatch(Type, "i)(ring|amulet)")
 		Result := Result . "`r3 rare monsters spawn near the shrine"
 
 	If(RegExMatch(Item, "i)^.*% increased Evasion Rating$"))
-		If RegExMatch(Item, (jewel))
+		If RegExMatch(Type, "i)(jewel)")
 		Result := Result . "`r3 rare monsters spawn near the shrine"
 
 	If(RegExMatch(Item, "i)^.*% of Physical Attack Damage Leeched as Life$"))
@@ -411,7 +417,7 @@ Parse_item(Item)
 		Result := Result . "`rone mob drops 5 rare daggers"
 
 	If(RegExMatch(Item, "i)^.*% increased Critical Strike Chance for Spells$"))
-		IfNotInString Item, jewel
+		If not RegExMatch(Type, "i)(jewel)")
 		Result := Result . "`rone mob drops 5 rare staves"
 
 	If(RegExMatch(Item, "i)^.*% increased Melee Critical Strike Multiplier$"))
@@ -421,7 +427,7 @@ Parse_item(Item)
 		Result := Result . "`rone mob drops 5 rare two-handed maces"
 
 	If(RegExMatch(Item, "i)^.*% increased Critical Strike Chance for Spells$"))
-		If RegExMatch(Item, (jewel))
+		If RegExMatch(Type, "i)(jewel)")
 		Result := Result . "`rone mob drops 5 rare wands"
 
 	If(RegExMatch(Item, "i)^.*% increased Critical Strike Chance with One Handed Melee Weapons$"))
@@ -569,8 +575,11 @@ Parse_item(Item)
 	If(RegExMatch(Item, "i)^.*% reduced Mana Cost of Skills$"))
 		Result := Result . "`r-(12-16)% maximum Player Resistances"
 
-	If(RegExMatch(Item, "i)^\+.* Life gained for each Enemy hit by your Attacks$"))
+	If(RegExMatch(Item, "i)^\+.* Life gained for each Enemy hit by Attacks$"))
 		Result := Result . "`rKill streaks award you with Rampage bonuses"
+
+	If(RegExMatch(Item, "i)^Area is inhabited by Goatmen$"))
+		Result := Result . "`rMonsters have 40% increased Area of Effect"
 
 	If(RegExMatch(Item, "i)^Area is inhabited by Demons$"))
 		Result := Result . "`rMonsters have 360-400% increased Critical Strike Chance, Monsters have 35% increased Critical Strike Multiplier"
@@ -773,10 +782,22 @@ Split(Item, n)
 	}
 }
 
+GetType(Item){
+StringGetPos Pos, Item, `r
+StringTrimLeft Item, Item, Pos+2
+StringGetPos Pos, Item, `r
+StringTrimLeft Item, Item, Pos+2
+StringGetPos Pos, Item, `r
+StringLeft Item, Item, Pos
+Type := Item
+}
+
 ^x::
 Send {CONTROL DOWN}c{CONTROL UP}
 MouseGetPos X, Y
 Item := GetClipboardContents()
+Global Type :=
+GetType(Item)
 Global Result := 
 Pos := GetStartingPos(Item)
 StringTrimLeft Item, Item, Pos+10

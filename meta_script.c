@@ -39,7 +39,10 @@ void print_contitions(char *types, FILE* script){
     char type[64];
     int i=0;
     if(types[4]=='+'){
-        fprintf(script, "		If RegExMatch(Item, (");
+        fprintf(script, "		If RegExMatch(Type, \"i)(");
+    }
+    else{
+        fprintf(script, "		If not RegExMatch(Type, \"i)(");
     }
     while(pos < strlen(types)){
         while(pos+i+1 < strlen(types) && types[pos+i+1]!='+' && types[pos+i+1]!='-'){
@@ -47,21 +50,14 @@ void print_contitions(char *types, FILE* script){
             i++;
         }
         type[i]=0;
-        if(types[pos]=='-'){
-            fprintf(script, "		IfNotInString Item, %s\n", type);
-        }
-        else{
-            if(pos==4)
-                fprintf(script, "%s", type);
-            else
-                fprintf(script, "|%s", type);
-        }
+        if(pos==4)
+            fprintf(script, "%s", type);
+        else
+            fprintf(script, "|%s", type);
         pos += i+1;
         i=0;
     }
-    if(types[4]=='+'){
-        fprintf(script, "))\n");
-    }
+        fprintf(script, ")\")\n");
 }
 
 
@@ -288,10 +284,22 @@ int main(){
 	}\n\
 }\n\n");
 
+    fprintf(script, "GetType(Item){\n\
+StringGetPos Pos, Item, `r\n\
+StringTrimLeft Item, Item, Pos+2\n\
+StringGetPos Pos, Item, `r\n\
+StringTrimLeft Item, Item, Pos+2\n\
+StringGetPos Pos, Item, `r\n\
+StringLeft Item, Item, Pos\n\
+Type := Item\n\
+}\n\n");
+
 	fprintf(script, "^x::\n\
 Send {CONTROL DOWN}c{CONTROL UP}\n\
 MouseGetPos X, Y\n\
 Item := GetClipboardContents()\n\
+Global Type :=\n\
+GetType(Item)\n\
 Global Result := ""\n\
 Pos := GetStartingPos(Item)\n\
 StringTrimLeft Item, Item, Pos+10\n\
@@ -333,7 +341,6 @@ return");
 	//fprintf(script, "^w::\nMouseGetPos X, Y\nLog := GetClipboardContents()\nGlobal Result := \"\"\nParse_log(Log)\nStringTrimLeft Result, Result, 1\nTooltip %%Result%%, X, Y\nSetTimer, ToolTipTimer, 100\nreturn\n\n");
 
 }
-
 
 
 
