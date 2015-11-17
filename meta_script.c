@@ -74,7 +74,7 @@ void to_regex(char *affix, char* regex){
 			regex[j+1] = '{';
 			regex[j+2] = '1';
 			regex[j+3] = ',';
-			regex[j+4] = '3';
+			regex[j+4] = '5';
 			regex[j+5] = '}';
 			j+=6;
 		}
