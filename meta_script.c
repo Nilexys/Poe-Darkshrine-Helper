@@ -71,8 +71,12 @@ void to_regex(char *affix, char* regex){
 	for(i=0; i<strlen(affix); i++){
 		if( affix[i]==35 ){
 			regex[j] = '.';
-			regex[j+1] = '*';
-			j+=2;
+			regex[j+1] = '{';
+			regex[j+2] = '1';
+			regex[j+3] = ',';
+			regex[j+4] = '3';
+			regex[j+5] = '}';
+			j+=6;
 		}
 		/*else if( affix[i]==37 ){
 			regex[j] = '%';
