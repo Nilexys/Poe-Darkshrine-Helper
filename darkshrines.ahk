@@ -31,9 +31,9 @@ GetStartingPos(Item)
 		compt := compt+1
 	IfInString Item, Mirrored
 		compt := compt+1
-	IfInString Item, Map
+	If RegExMatch(Item, "Map`r")
 		compt := compt+1
-	IfInString Item, Jewel
+	If RegExMatch(Item, "Jewel`r")
 		compt := compt+1
 	while compt>0
 	{
